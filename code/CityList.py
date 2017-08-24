@@ -1,131 +1,103 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 
+import sys
+reload(sys)
+sys.setdefaultencoding( "utf-8" )
+
 import requests
 import json , re
-# import mysql.connector
+import mysql.connector
 
-# conn = mysql.connector.connect(user='root', password='root', database='Utils')
+conn = mysql.connector.connect(user='root', password='root', database='Utils')
 
 
 
 def getCityGeo(cityname):
     url = 'http://ditu.amap.com/service/poiInfo?query_type=TQUERY&keywords=%s' % (cityname)
     html = requests.get(url).text
-    # print html
+    print html
+
+    if len(html) < len('{"status":"2","data":"Return Failure!"12312323}') :
+        return -1
 
     data = json.loads(html)
     cityList = []
     try:
         searchList = data['data']['locres']['poi_list']
+        # searchList = data['data']['poi_list']
+        # city = searchList[0]
+        # _city = {'level': '', 'child_station_count': city['child_station_count'],
+        #          'adcode': city['adcode'], 'coords': '', 'address': city['address'],
+        #          'ename': '', 'name': city['name'], 'longitude': city['longitude'],
+        #          'latitude': city['latitude']}
+        # return _city
         for city in searchList:
             _city = { 'level' : city['level'] , 'child_station_count' : city['child_station_count'],
                      'adcode': city['adcode'] , 'coords' : city['coords'] , 'address' : city['address'],
                      'ename' : city['ename'], 'name' : city['name'] , 'longitude' : city['longitude'],
                       'latitude': city['latitude']}
-            cityList.append(_city)
-        return cityList
+            return _city
     except Exception:
         return cityList
 
 
 def saveInfo(cityInfo , city):
+    if cityInfo < 3:
+        print city + 'not include'
+        return
+    print  city
     try:
+        print cityInfo['ename']
         cursor = conn.cursor()
+        tem = cityInfo['ename']
+        tem = str(tem).replace('\'' , '`')
         _sql = 'insert into CityGeo(ename , name , level , adcode ,child_station_count,coords ,  address , longitude ,latitude ) values (\'%s\',\'%s\',\'%s\',\'%s\',%s, \'%s\' ,\'%s\' ,\'%s\', \'%s\')' % (
-            cityInfo['ename'], city, cityInfo['level'], cityInfo['adcode'], cityInfo['child_station_count'],
+            tem, city, cityInfo['level'], cityInfo['adcode'], cityInfo['child_station_count'],
             # cityInfo['coords'] ,
             "",
             cityInfo['address'] ,cityInfo['longitude'] ,cityInfo['latitude'])
-        # print(_sql)
+        print(_sql)
         cursor.execute(_sql)
         conn.commit()
     except Exception:
         with open('errorcity' ,'a') as f:
+            # print city
             f.write(city + '\n')
         print (city + 'error')
 
 
 
 
-def getCityListText():
-    cityList = []
-    # with open('citylistshort' , 'r') as file:
-    with open('citylist' , 'r') as file:
-        cityList = file.readlines()
 
-    provinceId = 0
-    cityId =  0
-    regionId = 0
+def getCityListDB():
+    cursor = conn.cursor()
+    _sql = 'SELECT `ChinaCity`.`cityName`,`ChinaCity`.`regionName` FROM `ChinaCity` WHERE `ChinaCity`.`cityName` != \'\' and id > 248'
+    cursor.execute(_sql)
+    cityList = cursor.fetchall()
 
     for city in cityList:
-        city = city.replace('Region' , ' Region')
-        city = city.strip()
-        city = city + ' '
-
-
-
-
-
-        if 'Region'  in city :
-            regionId = regionId + 1
-        elif 'City' in city :
-            regionId = 0
-            cityId = cityId + 1
-        else:
-            regionId = 0
-            cityId = 0
-            provinceId = provinceId + 1
-
-
-
-
-        provinceName = re.findall('Province: .*? ' , city)
-        provinceName = provinceName[0]
-        provinceName = provinceName.replace('Province: ' , '')
-        provinceName = provinceName.strip()
-
-
-
-        cityName = re.findall('City: .*? ', city)
-        regionName = re.findall('Region: .*? ', city)
-
-
-
-
-        if len(cityName) > 0:
-            cityName = cityName[0]
-            cityName = cityName.replace('City: ', '')
-            cityName = cityName.strip()
-            # print cityName
-
-            if len(regionName) > 0:
-                regionName = regionName[0]
-                regionName = regionName.replace('Region: ', '')
-                regionName = regionName.strip()
-                # print regionName
-
-                print 'provinceName: ' + provinceName + ' provinceId: ' + str(provinceId) + \
-                      ' cityName: ' + cityName + ' cityId: ' + str(cityId) + \
-                      ' regionName: ' + regionName + ' regionId: ' + str(regionId)
+        if len(city) > 1:
+            if '盟' in city[0]:
+                temp = city[0]  + city[1]
             else:
-
-                print 'provinceName: ' + provinceName + ' provinceId: ' + str(provinceId) + \
-                  ' cityName: ' + cityName + ' cityId: ' + str(cityId)
+                temp = city[0] + u'市' + city[1]
         else:
-            print 'provinceName: ' + provinceName + ' provinceId: ' + str(provinceId)
+            temp = city[0] + u'市'
+        print temp
+        saveInfo( getCityGeo(temp) , temp)
 
+def  getCityListText():
+    with open('citylist' , 'r') as f:
+        cityList = f.readlines()
 
+    for city in cityList:
+        city = city.strip()
+        # city = city + '县'
+        saveInfo(getCityGeo(city), city)
 
-
-
-        # cityListInfo = getCityGeo(city)
-    #
-    #     for cityInfo in cityListInfo:
-    #         print cityInfo
-    #         print (cityInfo['ename'])
-    #         saveInfo(cityInfo , city)
-    #
 
 getCityListText()
+
+# getCityListDB()
 # getCityGeo('北京')

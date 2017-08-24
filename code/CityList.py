@@ -2,10 +2,10 @@
 # -*- coding: UTF-8 -*-
 
 import requests
-import json
-import mysql.connector
+import json , re
+# import mysql.connector
 
-conn = mysql.connector.connect(user='root', password='root', database='Utils')
+# conn = mysql.connector.connect(user='root', password='root', database='Utils')
 
 
 
@@ -50,17 +50,82 @@ def saveInfo(cityInfo , city):
 
 def getCityListText():
     cityList = []
+    # with open('citylistshort' , 'r') as file:
     with open('citylist' , 'r') as file:
         cityList = file.readlines()
 
-    for city in cityList:
-        print (city)
-        cityListInfo = getCityGeo(city)
+    provinceId = 0
+    cityId =  0
+    regionId = 0
 
-        for cityInfo in cityListInfo:
-            print (cityInfo['ename'])
-            saveInfo(cityInfo , city)
-        
+    for city in cityList:
+        city = city.replace('Region' , ' Region')
+        city = city.strip()
+        city = city + ' '
+
+
+
+
+
+        if 'Region'  in city :
+            regionId = regionId + 1
+        elif 'City' in city :
+            regionId = 0
+            cityId = cityId + 1
+        else:
+            regionId = 0
+            cityId = 0
+            provinceId = provinceId + 1
+
+
+
+
+        provinceName = re.findall('Province: .*? ' , city)
+        provinceName = provinceName[0]
+        provinceName = provinceName.replace('Province: ' , '')
+        provinceName = provinceName.strip()
+
+
+
+        cityName = re.findall('City: .*? ', city)
+        regionName = re.findall('Region: .*? ', city)
+
+
+
+
+        if len(cityName) > 0:
+            cityName = cityName[0]
+            cityName = cityName.replace('City: ', '')
+            cityName = cityName.strip()
+            # print cityName
+
+            if len(regionName) > 0:
+                regionName = regionName[0]
+                regionName = regionName.replace('Region: ', '')
+                regionName = regionName.strip()
+                # print regionName
+
+                print 'provinceName: ' + provinceName + ' provinceId: ' + str(provinceId) + \
+                      ' cityName: ' + cityName + ' cityId: ' + str(cityId) + \
+                      ' regionName: ' + regionName + ' regionId: ' + str(regionId)
+            else:
+
+                print 'provinceName: ' + provinceName + ' provinceId: ' + str(provinceId) + \
+                  ' cityName: ' + cityName + ' cityId: ' + str(cityId)
+        else:
+            print 'provinceName: ' + provinceName + ' provinceId: ' + str(provinceId)
+
+
+
+
+
+        # cityListInfo = getCityGeo(city)
+    #
+    #     for cityInfo in cityListInfo:
+    #         print cityInfo
+    #         print (cityInfo['ename'])
+    #         saveInfo(cityInfo , city)
+    #
 
 getCityListText()
 # getCityGeo('北京')
